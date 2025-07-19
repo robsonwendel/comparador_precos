@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const apiBaseUrl = 'http://127.0.0.1:5000/api';
+    const apiBaseUrl = 'https://comparador-api.onrender.com/api';
 
     const searchInput = document.getElementById('produtoSearch');
     const autocompleteResults = document.getElementById('autocompleteResults');
