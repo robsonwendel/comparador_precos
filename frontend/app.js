@@ -1,7 +1,7 @@
 // Aguarda o HTML ser completamente carregado para executar o script
 document.addEventListener('DOMContentLoaded', () => {
     // URL base da API do backend
-    const apiBaseUrl = 'http://127.0.0.1:5000/api';
+    const apiBaseUrl = 'https://comparador-api.onrender.com';
 
     // Seleciona os elementos do HTML que serão manipulados
     const buscaInput = document.getElementById('buscaProduto');
