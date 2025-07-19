@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Administrador</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
+        textarea { width: 100%; height: 300px; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; }
+        #status { margin-top: 20px; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Importar Ofertas</h1>
+    <p>Cole os dados do panfleto no campo abaixo (Data | Supermercado | Produto | Valor | Categoria)</p>
+    
+    <textarea id="dataInput" placeholder="Cole os dados aqui..."></textarea>
+    <button id="submitBtn">Importar Dados</button>
+
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('submitBtn').addEventListener('click', () => {
+            const textArea = document.getElementById('dataInput');
+            const data = textArea.value;
+            const statusDiv = document.getElementById('status');
+
+            if (!data.trim()) {
+                statusDiv.textContent = "Por favor, cole alguns dados antes de importar.";
+                statusDiv.className = 'error';
+                return;
+            }
+
+            // Envia os dados para o backend
+            fetch('http://127.0.0.1:5000/api/importar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain', // Enviando como texto puro
+                },
+                body: data
+            })
+            .then(response => response.json())
+            .then(result => {
+                statusDiv.textContent = result.message;
+                statusDiv.className = result.status === 'success' ? 'success' : 'error';
+                if(result.status === 'success'){
+                    textArea.value = ''; // Limpa o campo após sucesso
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                statusDiv.textContent = 'Ocorreu um erro de comunicação com o servidor.';
+                statusDiv.className = 'error';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Lista de Compras</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="main-nav">
+            <a href="index.html">Ver Ofertas</a>
+            <a href="compras.html" class="active">Minhas Compras</a>
+        </nav>
+
+        <h1>Minha Lista de Compras Inteligente</h1>
+        <p>Adicione produtos à sua lista e compare o custo total em cada supermercado.</p>
+
+        <div class="search-container">
+            <input type="text" id="produtoSearch" placeholder="Digite o nome de um produto...">
+            <div id="autocompleteResults" class="autocomplete-results"></div>
+        </div>
+
+        <!-- Botão para remover todos os produtos da lista -->
+        <div class="acoes-lista">
+            <button id="limparListaBtn" class="btn-limpar">Limpar Lista</button>
+        </div>
+
+        <!-- Container para as fichas dos supermercados -->
+        <div class="resultados-container" id="resultadosContainer">
+            <!-- As fichas dos supermercados serão renderizadas aqui pelo JavaScript -->
+        </div>
+    </div>
+
+    <script src="compras.js"></script>
+</body>
+</html>

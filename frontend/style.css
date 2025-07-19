@@ -1,0 +1,131 @@
+/* frontend/style.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+h1, h2, h3 {
+    text-align: center;
+    color: #0056b3;
+}
+
+/* --- Navegação --- */
+.main-nav { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
+.main-nav a { text-decoration: none; color: #007bff; font-size: 1.1em; padding: 8px 15px; border-radius: 5px; transition: background-color 0.2s; }
+.main-nav a:hover { background-color: #e9ecef; }
+.main-nav a.active { background-color: #007bff; color: white; }
+
+/* --- Estilos da Página de Ofertas --- */
+.filtros { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; }
+.filtros select, .filtros input { flex: 1; min-width: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background-color: #007bff; color: white; }
+tr:nth-child(even) { background-color: #f8f9fa; }
+tr:hover { background-color: #e9ecef; }
+.btn-historico { background-color: #28a745; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
+.btn-historico:hover { background-color: #218838; }
+
+/* --- Estilos da Página de Compras --- */
+.search-container { position: relative; margin-bottom: 20px; }
+#produtoSearch { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.autocomplete-results { position: absolute; border: 1px solid #ddd; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; background-color: white; max-height: 200px; overflow-y: auto; }
+.autocomplete-results div { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+.autocomplete-results div:hover { background-color: #f1f1f1; }
+.autocomplete-no-result { padding: 10px; color: #888; font-style: italic; }
+
+.acoes-lista { text-align: right; margin-bottom: 20px; }
+.btn-limpar { background-color: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+.btn-limpar:hover { background-color: #5a6268; }
+
+.info-lista-vazia { text-align: center; color: #888; font-size: 1.2em; padding: 40px 0; }
+
+/* --- NOVOS ESTILOS PARA AS FICHAS DE SUPERMERCADO --- */
+.resultados-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+.supermercado-ficha {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.supermercado-ficha.completo {
+    border-top: 5px solid #28a745; /* Destaque verde para listas completas */
+}
+.supermercado-ficha:not(.completo) {
+    border-top: 5px solid #ffc107; /* Destaque amarelo para listas parciais */
+}
+.ficha-header {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+}
+.ficha-header h2 {
+    margin: 0;
+    text-align: left;
+    font-size: 1.4em;
+}
+.ficha-total {
+    text-align: right;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-top: 10px;
+}
+.ficha-total.completo span { color: #28a745; }
+.ficha-total.parcial span { color: #d68910; }
+.ficha-total small {
+    display: block;
+    font-size: 0.7em;
+    font-weight: normal;
+    color: #6c757d;
+}
+.ficha-body {
+    padding: 15px;
+    flex-grow: 1;
+}
+.ficha-body ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+.ficha-body li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.ficha-body li:last-child {
+    border-bottom: none;
+}
+.ficha-body li span {
+    font-weight: 500;
+}
+.ficha-body li.item-faltando {
+    color: #dc3545;
+    font-style: italic;
+}
+.ficha-body li.item-faltando span {
+    font-weight: normal;
+}
+
+/* --- Estilos do Modal --- */
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+.modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 8px; position: relative; }
+.close-btn { color: #aaa; position: absolute; top: 10px; right: 25px; font-size: 35px; font-weight: bold; cursor: pointer; }
+.close-btn:hover, .close-btn:focus { color: black; }
