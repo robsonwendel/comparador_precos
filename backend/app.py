@@ -4,12 +4,22 @@ from flask_cors import CORS
 import sqlite3
 import re
 from datetime import datetime, date
+import unicodedata # Importação para lidar com acentos
 
 # Inicializa a aplicação Flask e habilita o CORS
 app = Flask(__name__)
 CORS(app)
 
 DATABASE = 'supermercado.db'
+
+# --- NOVA FUNÇÃO PARA REMOVER ACENTOS ---
+def unaccent(text):
+    """Remove acentos de uma string."""
+    if not isinstance(text, str):
+        return text
+    # Normaliza a string para separar os caracteres dos seus acentos
+    # e depois remove os caracteres de acentuação (categoria 'Mn')
+    return ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
 
 def get_db_connection():
     """Cria e retorna uma conexão com o banco de dados."""
@@ -81,47 +91,40 @@ def get_filtros():
 
 @app.route('/api/ofertas', methods=['GET'])
 def get_ofertas():
+    """Retorna a lista de ofertas, com busca que ignora acentos."""
     data_selecionada = request.args.get('data') or date.today().strftime('%Y-%m-%d')
     busca = request.args.get('busca', '')
     supermercado_id = request.args.get('supermercado', '')
     categoria_id = request.args.get('categoria', '')
+    
     conn = get_db_connection()
+    # --- ALTERAÇÃO: Registra a função unaccent na conexão atual ---
+    conn.create_function("unaccent", 1, unaccent)
+
     query = "SELECT p.nome as produto_nome, ph.valor, ph.unidade, ph.observacoes, ph.id_produto, s.nome as supermercado_nome, c.nome as categoria_nome FROM precos_historicos ph JOIN produtos p ON ph.id_produto = p.id JOIN supermercados s ON ph.id_supermercado = s.id JOIN categorias c ON p.id_categoria = c.id WHERE ph.data_validade = ?"
     params = [data_selecionada]
+
     if busca:
-        query += " AND p.nome LIKE ?"
-        params.append(f'%{busca}%')
+        # --- ALTERAÇÃO: Usa a função unaccent na query e no parâmetro ---
+        query += " AND unaccent(p.nome) LIKE ?"
+        params.append(f'%{unaccent(busca)}%')
     if supermercado_id:
         query += " AND s.id = ?"
         params.append(supermercado_id)
     if categoria_id:
         query += " AND c.id = ?"
         params.append(categoria_id)
+    
     query += " ORDER BY p.nome"
     ofertas = conn.execute(query, params).fetchall()
     conn.close()
     return jsonify([dict(row) for row in ofertas])
 
-# --- ROTA CORRIGIDA ---
 @app.route('/api/produto/<int:id_produto>/historico', methods=['GET'])
 def get_historico_produto(id_produto):
-    """
-    Retorna o histórico de preços de um produto, incluindo o nome do supermercado.
-    Esta versão aceita o ID do produto diretamente no URL.
-    """
     conn = get_db_connection()
-    historico = conn.execute("""
-        SELECT
-            ph.valor,
-            ph.data_registro,
-            s.nome AS supermercado_nome
-        FROM precos_historicos ph
-        JOIN supermercados s ON ph.id_supermercado = s.id
-        WHERE ph.id_produto = ?
-        ORDER BY ph.data_registro
-    """, (id_produto,)).fetchall()
+    historico = conn.execute("SELECT ph.valor, ph.data_registro, s.nome AS supermercado_nome FROM precos_historicos ph JOIN supermercados s ON ph.id_supermercado = s.id WHERE ph.id_produto = ? ORDER BY ph.data_registro", (id_produto,)).fetchall()
     conn.close()
-    
     return jsonify([dict(row) for row in historico])
 
 @app.route('/api/produtos-em-oferta', methods=['GET'])
