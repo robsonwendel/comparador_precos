@@ -6,9 +6,9 @@
     <title>Painel do Administrador</title>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
-        textarea { width: 100%; height: 300px; margin-bottom: 10px; }
+        textarea { width: 100%; height: 300px; margin-bottom: 10px; font-family: monospace; }
         button { padding: 10px 20px; cursor: pointer; }
-        #status { margin-top: 20px; padding: 10px; border-radius: 5px; }
+        #status { margin-top: 20px; padding: 10px; border-radius: 5px; display: none; }
         .success { background-color: #d4edda; color: #155724; }
         .error { background-color: #f8d7da; color: #721c24; }
     </style>
@@ -28,32 +28,45 @@
             const data = textArea.value;
             const statusDiv = document.getElementById('status');
 
+            // CONFIRME SE ESTE URL ESTÁ CORRETO
+            const apiUrl = 'https://comparador-api.onrender.com/api/importar';
+
             if (!data.trim()) {
                 statusDiv.textContent = "Por favor, cole alguns dados antes de importar.";
                 statusDiv.className = 'error';
+                statusDiv.style.display = 'block';
                 return;
             }
 
-            // Envia os dados para o backend
-            fetch('https://comparador-api.onrender.com/api/importar', {
+            statusDiv.textContent = "A importar... isto pode demorar até 30 segundos se o servidor estiver a acordar.";
+            statusDiv.className = '';
+            statusDiv.style.display = 'block';
+
+            fetch(apiUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain', // Enviando como texto puro
-                },
+                headers: { 'Content-Type': 'text/plain' },
                 body: data
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || 'Erro desconhecido no servidor'); });
+                }
+                return response.json();
+            })
             .then(result => {
                 statusDiv.textContent = result.message;
                 statusDiv.className = result.status === 'success' ? 'success' : 'error';
                 if(result.status === 'success'){
-                    textArea.value = ''; // Limpa o campo após sucesso
+                    textArea.value = '';
                 }
             })
             .catch(error => {
                 console.error('Erro:', error);
-                statusDiv.textContent = 'Ocorreu um erro de comunicação com o servidor.';
+                statusDiv.textContent = `Ocorreu um erro de comunicação: ${error.message}`;
                 statusDiv.className = 'error';
+            })
+            .finally(() => {
+                statusDiv.style.display = 'block';
             });
         });
     </script>
