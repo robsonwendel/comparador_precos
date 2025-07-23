@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let produtosEmOferta = [];
     let listaDeCompras = JSON.parse(localStorage.getItem('minhaListaDeCompras')) || [];
 
-    // --- NOVA FUNÇÃO PARA REMOVER ACENTOS EM JAVASCRIPT ---
+    // Função para remover acentos em JavaScript
     function unaccent(str) {
         if (!str) return "";
         return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -33,9 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // --- ALTERAÇÃO: Usa a função unaccent para comparar ---
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Trocamos .includes() por .startsWith() para que a busca
+        // corresponda apenas ao início do nome do produto.
         const filtrados = produtosEmOferta.filter(p => 
-            unaccent(p.nome.toLowerCase()).includes(unaccentedInput)
+            unaccent(p.nome.toLowerCase()).startsWith(unaccentedInput)
         );
 
         if (filtrados.length > 0) {
