@@ -56,7 +56,6 @@ def importar_dados():
             if nome_categoria not in categorias_map:
                 novas_categorias.add(nome_categoria)
 
-            # (A lógica de limpeza de dados continua a mesma)
             datas_processadas = []
             try:
                 partes_data = data_validade_raw.split('/')
@@ -78,7 +77,6 @@ def importar_dados():
             observacoes = obs_match.group(1) if obs_match else None
             nome_produto = re.sub(r'\s*\(.*?\)\s*', '', nome_produto_raw).strip()
 
-            # Adiciona os dados de preço a uma lista para inserção em massa mais tarde
             for data_valida in datas_processadas:
                 dados_precos_para_inserir.append({
                     "nome_supermercado": nome_supermercado,
@@ -115,7 +113,6 @@ def importar_dados():
 
         # 5. Apagar e inserir preços em massa (a operação mais importante)
         if dados_precos_para_inserir:
-            # Primeiro, apaga todos os registos que serão substituídos
             delete_tuples = []
             for preco in dados_precos_para_inserir:
                 id_supermercado = supermercados_map.get(preco['nome_supermercado'])
@@ -125,9 +122,17 @@ def importar_dados():
                     delete_tuples.append((id_produto, id_supermercado, preco['data_validade']))
             
             if delete_tuples:
-                execute_values(cursor, "DELETE FROM precos_historicos WHERE (id_produto, id_supermercado, data_validade) IN %s", delete_tuples)
+                # --- CORREÇÃO APLICADA AQUI ---
+                # Esta nova sintaxe é a forma correta de apagar em massa no PostgreSQL
+                delete_query = """
+                    DELETE FROM precos_historicos p
+                    USING (VALUES %s) AS v(id_produto, id_supermercado, data_validade)
+                    WHERE p.id_produto = v.id_produto
+                      AND p.id_supermercado = v.id_supermercado
+                      AND p.data_validade = v.data_validade
+                """
+                execute_values(cursor, delete_query, delete_tuples)
 
-            # Agora, insere os novos registos
             insert_tuples = []
             for preco in dados_precos_para_inserir:
                 id_supermercado = supermercados_map.get(preco['nome_supermercado'])
