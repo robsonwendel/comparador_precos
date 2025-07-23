@@ -122,8 +122,6 @@ def importar_dados():
                     delete_tuples.append((id_produto, id_supermercado, preco['data_validade']))
             
             if delete_tuples:
-                # --- CORREÇÃO APLICADA AQUI ---
-                # Esta nova sintaxe é a forma correta de apagar em massa no PostgreSQL
                 delete_query = """
                     DELETE FROM precos_historicos p
                     USING (VALUES %s) AS v(id_produto, id_supermercado, data_validade)
@@ -156,7 +154,6 @@ def importar_dados():
         
     return jsonify({"status": "success", "message": f"{len(dados_precos_para_inserir)} registros de ofertas processados com sucesso!"}), 200
 
-# O resto das rotas continua igual
 @app.route('/api/filtros', methods=['GET'])
 def get_filtros():
     conn = get_db_connection()
@@ -183,7 +180,9 @@ def get_ofertas():
     params = [data_selecionada]
 
     if busca:
-        query += " AND p.nome ILIKE %s"
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Agora usamos a função unaccent() do PostgreSQL, que ignora acentos e maiúsculas/minúsculas
+        query += " AND unaccent(p.nome) ILIKE unaccent(%s)"
         params.append(f'%{busca}%')
     if supermercado_id:
         query += " AND s.id = %s"
