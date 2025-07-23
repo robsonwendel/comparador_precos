@@ -11,6 +11,7 @@
         #status { margin-top: 20px; padding: 10px; border-radius: 5px; display: none; }
         .success { background-color: #d4edda; color: #155724; }
         .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
@@ -28,7 +29,6 @@
             const data = textArea.value;
             const statusDiv = document.getElementById('status');
 
-            // CONFIRME SE ESTE URL ESTÁ CORRETO
             const apiUrl = 'https://comparador-api.onrender.com/api/importar';
 
             if (!data.trim()) {
@@ -38,8 +38,8 @@
                 return;
             }
 
-            statusDiv.textContent = "A importar... isto pode demorar até 30 segundos se o servidor estiver a acordar.";
-            statusDiv.className = '';
+            statusDiv.textContent = "A comunicar com o servidor... Se for a primeira vez, pode demorar até 50 segundos.";
+            statusDiv.className = 'info';
             statusDiv.style.display = 'block';
 
             fetch(apiUrl, {
@@ -49,7 +49,10 @@
             })
             .then(response => {
                 if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.message || 'Erro desconhecido no servidor'); });
+                    // Tenta ler a mensagem de erro do servidor
+                    return response.json().then(err => { 
+                        throw new Error(err.message || 'O servidor respondeu com um erro.'); 
+                    });
                 }
                 return response.json();
             })
@@ -62,7 +65,12 @@
             })
             .catch(error => {
                 console.error('Erro:', error);
-                statusDiv.textContent = `Ocorreu um erro de comunicação: ${error.message}`;
+                // Dá uma mensagem mais específica para o erro "Failed to fetch"
+                if (error.message.includes('Failed to fetch')) {
+                    statusDiv.textContent = 'Não foi possível contactar o servidor. Verifique os logs no Render ou tente novamente em 30 segundos.';
+                } else {
+                    statusDiv.textContent = `Ocorreu um erro: ${error.message}`;
+                }
                 statusDiv.className = 'error';
             })
             .finally(() => {
