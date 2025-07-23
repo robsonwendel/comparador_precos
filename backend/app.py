@@ -3,14 +3,13 @@ import re
 import unicodedata
 from datetime import datetime, date
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# Lê a URL da base de dados a partir das variáveis de ambiente do Render
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db_connection():
@@ -27,14 +26,37 @@ def importar_dados():
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
-    registros_importados = 0
     try:
+        # --- LÓGICA DE IMPORTAÇÃO OTIMIZADA ---
+
+        # 1. Pré-carregar dados existentes para evitar queries dentro do loop
+        cursor.execute("SELECT nome, id FROM supermercados")
+        supermercados_map = {row['nome']: row['id'] for row in cursor.fetchall()}
+        
+        cursor.execute("SELECT nome, id FROM categorias")
+        categorias_map = {row['nome']: row['id'] for row in cursor.fetchall()}
+
+        cursor.execute("SELECT nome, id_categoria, id FROM produtos")
+        produtos_map = {(row['nome'], row['id_categoria']): row['id'] for row in cursor.fetchall()}
+
+        # Listas para guardar novos itens e dados de preços
+        novos_supermercados = set()
+        novas_categorias = set()
+        dados_precos_para_inserir = []
+
+        # 2. Processar cada linha em memória
         for linha in dados_brutos.strip().split('\n'):
             if not linha.strip() or '\t' not in linha: continue
             colunas = linha.split('\t')
             if len(colunas) < 5: continue
             data_validade_raw, nome_supermercado, nome_produto_raw, valor_raw, nome_categoria = [c.strip() for c in colunas]
-            
+
+            if nome_supermercado not in supermercados_map:
+                novos_supermercados.add(nome_supermercado)
+            if nome_categoria not in categorias_map:
+                novas_categorias.add(nome_categoria)
+
+            # (A lógica de limpeza de dados continua a mesma)
             datas_processadas = []
             try:
                 partes_data = data_validade_raw.split('/')
@@ -47,7 +69,6 @@ def importar_dados():
                 else:
                     datas_processadas.append(datetime.strptime(data_validade_raw, '%d/%m/%Y').date())
             except (ValueError, IndexError): continue
-            
             valor_match = re.search(r'[\d.,]+', valor_raw)
             if not valor_match: continue
             valor_numerico_str = valor_match.group().replace('.', '').replace(',', '.')
@@ -57,29 +78,69 @@ def importar_dados():
             observacoes = obs_match.group(1) if obs_match else None
             nome_produto = re.sub(r'\s*\(.*?\)\s*', '', nome_produto_raw).strip()
 
-            cursor.execute("INSERT INTO supermercados (nome) VALUES (%s) ON CONFLICT (nome) DO NOTHING", (nome_supermercado,))
-            cursor.execute("SELECT id FROM supermercados WHERE nome = %s", (nome_supermercado,))
-            id_supermercado = cursor.fetchone()['id']
-            
-            cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT (nome) DO NOTHING", (nome_categoria,))
-            cursor.execute("SELECT id FROM categorias WHERE nome = %s", (nome_categoria,))
-            id_categoria = cursor.fetchone()['id']
-            
-            cursor.execute("SELECT id FROM produtos WHERE nome = %s AND id_categoria = %s", (nome_produto, id_categoria))
-            produto_existente = cursor.fetchone()
-            if produto_existente:
-                id_produto = produto_existente['id']
-            else:
-                cursor.execute("INSERT INTO produtos (nome, id_categoria) VALUES (%s, %s) RETURNING id", (nome_produto, id_categoria))
-                id_produto = cursor.fetchone()['id']
-
+            # Adiciona os dados de preço a uma lista para inserção em massa mais tarde
             for data_valida in datas_processadas:
-                cursor.execute("DELETE FROM precos_historicos WHERE id_produto = %s AND id_supermercado = %s AND data_validade = %s", (id_produto, id_supermercado, data_valida))
-                cursor.execute("INSERT INTO precos_historicos (id_produto, id_supermercado, valor, unidade, data_validade, observacoes) VALUES (%s, %s, %s, %s, %s, %s)", (id_produto, id_supermercado, valor_final, unidade, data_valida, observacoes))
+                dados_precos_para_inserir.append({
+                    "nome_supermercado": nome_supermercado,
+                    "nome_categoria": nome_categoria,
+                    "nome_produto": nome_produto,
+                    "valor": valor_final,
+                    "unidade": unidade,
+                    "data_validade": data_valida,
+                    "observacoes": observacoes
+                })
+
+        # 3. Inserir novos supermercados e categorias em massa (se houver)
+        if novos_supermercados:
+            execute_values(cursor, "INSERT INTO supermercados (nome) VALUES %s ON CONFLICT (nome) DO NOTHING", [(s,) for s in novos_supermercados])
+            cursor.execute("SELECT nome, id FROM supermercados")
+            supermercados_map = {row['nome']: row['id'] for row in cursor.fetchall()}
+        
+        if novas_categorias:
+            execute_values(cursor, "INSERT INTO categorias (nome) VALUES %s ON CONFLICT (nome) DO NOTHING", [(c,) for c in novas_categorias])
+            cursor.execute("SELECT nome, id FROM categorias")
+            categorias_map = {row['nome']: row['id'] for row in cursor.fetchall()}
+
+        # 4. Identificar e inserir novos produtos em massa
+        novos_produtos = set()
+        for preco in dados_precos_para_inserir:
+            id_categoria = categorias_map.get(preco['nome_categoria'])
+            if id_categoria and (preco['nome_produto'], id_categoria) not in produtos_map:
+                novos_produtos.add((preco['nome_produto'], id_categoria))
+        
+        if novos_produtos:
+            execute_values(cursor, "INSERT INTO produtos (nome, id_categoria) VALUES %s", list(novos_produtos))
+            cursor.execute("SELECT nome, id_categoria, id FROM produtos")
+            produtos_map = {(row['nome'], row['id_categoria']): row['id'] for row in cursor.fetchall()}
+
+        # 5. Apagar e inserir preços em massa (a operação mais importante)
+        if dados_precos_para_inserir:
+            # Primeiro, apaga todos os registos que serão substituídos
+            delete_tuples = []
+            for preco in dados_precos_para_inserir:
+                id_supermercado = supermercados_map.get(preco['nome_supermercado'])
+                id_categoria = categorias_map.get(preco['nome_categoria'])
+                id_produto = produtos_map.get((preco['nome_produto'], id_categoria))
+                if id_produto and id_supermercado:
+                    delete_tuples.append((id_produto, id_supermercado, preco['data_validade']))
             
-            registros_importados += len(datas_processadas)
-            
+            if delete_tuples:
+                execute_values(cursor, "DELETE FROM precos_historicos WHERE (id_produto, id_supermercado, data_validade) IN %s", delete_tuples)
+
+            # Agora, insere os novos registos
+            insert_tuples = []
+            for preco in dados_precos_para_inserir:
+                id_supermercado = supermercados_map.get(preco['nome_supermercado'])
+                id_categoria = categorias_map.get(preco['nome_categoria'])
+                id_produto = produtos_map.get((preco['nome_produto'], id_categoria))
+                if id_produto and id_supermercado:
+                    insert_tuples.append((id_produto, id_supermercado, preco['valor'], preco['unidade'], preco['data_validade'], preco['observacoes']))
+
+            if insert_tuples:
+                execute_values(cursor, "INSERT INTO precos_historicos (id_produto, id_supermercado, valor, unidade, data_validade, observacoes) VALUES %s", insert_tuples)
+
         conn.commit()
+        
     except Exception as e:
         conn.rollback()
         print(f"Erro ao importar: {e}")
@@ -88,8 +149,9 @@ def importar_dados():
         cursor.close()
         conn.close()
         
-    return jsonify({"status": "success", "message": f"{registros_importados} registros de ofertas processados com sucesso!"}), 200
+    return jsonify({"status": "success", "message": f"{len(dados_precos_para_inserir)} registros de ofertas processados com sucesso!"}), 200
 
+# O resto das rotas continua igual
 @app.route('/api/filtros', methods=['GET'])
 def get_filtros():
     conn = get_db_connection()
@@ -111,10 +173,6 @@ def get_ofertas():
     
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # No PostgreSQL, a forma correta de ignorar acentos é com a extensão unaccent.
-    # Como alternativa simples, usaremos ILIKE para ignorar maiúsculas/minúsculas.
-    # Para uma busca sem acentos real, a extensão unaccent seria necessária na base de dados.
     
     query = "SELECT p.nome as produto_nome, ph.valor, ph.unidade, ph.observacoes, ph.id_produto, s.nome as supermercado_nome, c.nome as categoria_nome FROM precos_historicos ph JOIN produtos p ON ph.id_produto = p.id JOIN supermercados s ON ph.id_supermercado = s.id JOIN categorias c ON p.id_categoria = c.id WHERE ph.data_validade = %s"
     params = [data_selecionada]
