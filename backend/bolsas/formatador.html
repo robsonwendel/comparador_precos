@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatador de Listas de Bolsas v9.0 (Definitivo)</title>
+    <style>
+        /* Estilos para uma aparência limpa e moderna */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #ffffff;
+            padding: 25px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #555;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #process-button {
+            background-color: #27ae60;
+            color: white;
+        }
+        #copy-button {
+            background-color: #3498db;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Formatador de Listas de Bolsas</h1>
+        <p>Cole a sua lista completa no campo abaixo e clique em processar.</p>
+
+        <h2>1. Cole seus dados aqui:</h2>
+        <textarea id="input-data" rows="15"></textarea>
+
+        <div class="button-container">
+            <button id="process-button">Processar Lista</button>
+        </div>
+
+        <h2>2. Resultado Formatado (Pronto para Colar):</h2>
+        <textarea id="output-data" rows="15" readonly></textarea>
+        
+        <div class="button-container">
+            <button id="copy-button">Copiar Resultado</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const processButton = document.getElementById('process-button');
+            const copyButton = document.getElementById('copy-button');
+            const inputArea = document.getElementById('input-data');
+            const outputArea = document.getElementById('output-data');
+
+            const processarDados = () => {
+                const dadosBrutos = inputArea.value;
+                const linhas = dadosBrutos.trim().split('\n');
+                
+                const header = "ORDEM\tNOME\tCPF\tBANCO\tAGÊNCIA\tCONTA\tVALOR";
+                const linhasProcessadas = [header];
+
+                for (const linha of linhas) {
+                    try {
+                        const cpfRegex = /(\d{3}\.\d{3}\.\d{3}-\d{2})/;
+                        const valorRegex = /(R\$\s*[\d,.]+)/;
+                        
+                        const cpfMatch = linha.match(cpfRegex);
+                        const valorMatch = linha.match(valorRegex);
+
+                        if (!cpfMatch || !valorMatch) continue;
+
+                        const cpfStr = cpfMatch[0];
+                        const valorStr = valorMatch[0];
+                        const preCpfChunk = linha.slice(0, cpfMatch.index);
+                        const postCpfChunk = linha.slice(cpfMatch.index + cpfStr.length, valorMatch.index);
+
+                        const ordemMatch = preCpfChunk.match(/^(\d+)/);
+                        const ordem = ordemMatch ? ordemMatch[0] : '';
+                        
+                        const nomeEMatricula = preCpfChunk.slice(ordem.length);
+                        const nomeMatch = nomeEMatricula.match(/^([a-zA-ZÀ-ú\s]+)/);
+                        const nome = nomeMatch ? nomeMatch[1].trim() : '';
+
+                        // --- LÓGICA FINAL E CORRETA ---
+                        const dadosBancarios = postCpfChunk.trim();
+                        // 1. Dividir o bloco bancário pelos espaços
+                        const partesBancarias = dadosBancarios.split(/\s+/);
+                        
+                        // 2. Extrair cada parte
+                        const banco = partesBancarias[0] || '';
+                        const agencia = partesBancarias[1] || '';
+                        const contaBruta = partesBancarias.slice(2).join(''); // Junta o resto para formar a conta
+
+                        // 3. Formatar cada parte
+                        const cpfLimpo = cpfStr.replace(/\D/g, '');
+                        const bancoFormatado = banco.padStart(3, '0');
+                        const agenciaFormatada = agencia.replace(/\D/g, '').slice(0, 4); // Limpa e garante 4 dígitos
+                        const contaLimpa = contaBruta.replace(/OP.*$/i, '').replace(/[.-]/g, '').trim();
+                        const valorLimpo = valorStr.replace(/\D/g, '');
+
+                        linhasProcessadas.push(
+                            `${ordem}\t${nome}\t${cpfLimpo}\t${bancoFormatado}\t${agenciaFormatada}\t${contaLimpa}\t${valorLimpo}`
+                        );
+
+                    } catch (error) {
+                        console.log("Linha ignorada por erro:", linha, error);
+                        continue;
+                    }
+                }
+
+                if (linhasProcessadas.length <= 1) {
+                    outputArea.value = "Nenhuma linha válida foi encontrada. Verifique se o formato dos dados colados está correto.";
+                } else {
+                    outputArea.value = linhasProcessadas.join('\n');
+                }
+            };
+
+            const copiarResultado = () => {
+                if (outputArea.value.length === 0 || outputArea.value.startsWith("Nenhuma linha")) {
+                    alert("Nada para copiar.");
+                    return;
+                }
+                navigator.clipboard.writeText(outputArea.value).then(() => {
+                    copyButton.textContent = 'Copiado!';
+                    setTimeout(() => { copyButton.textContent = 'Copiar Resultado'; }, 2000);
+                });
+            };
+
+            processButton.addEventListener('click', processarDados);
+            copyButton.addEventListener('click', copiarResultado);
+        });
+    </script>
+
+</body>
+</html>

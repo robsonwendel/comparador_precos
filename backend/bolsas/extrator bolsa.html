@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente de Despachos</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: flex-start; padding: 20px; gap: 30px; flex-wrap: wrap; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); width: 480px; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        textarea { width: 95%; height: 150px; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .form-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; align-items: center; }
+        .form-grid label { font-weight: bold; text-align: right; padding-right: 10px; color: #555; font-size: 14px; }
+        .form-grid input, .form-grid select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; background-color: #555; color: white; width: 100%; font-size: 13px; }
+        .btn:hover { background-color: #333; }
+        .btn-process { background-color: #007bff; color: white; font-size: 16px; padding: 12px; width: 100%; }
+        .btn-process:hover { background-color: #0056b3; }
+        .generator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .generator-grid .btn-gen { padding: 15px 10px; font-size: 14px; text-align: center; }
+        #output-container { margin-top: 20px; }
+        #output-container h3 { text-align: center; color: #333; }
+        #despachoGerado { height: 100px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>1. Cole o Despacho Inicial</h2>
+        <textarea id="inputText" placeholder="Cole o texto do despacho aqui para extrair os dados..."></textarea>
+        <button onclick="processarTexto()" class="btn-process">Extrair Dados para Formulário</button>
+    </div>
+
+    <div class="container">
+        <h2>2. Edite e Copie os Dados</h2>
+        <div class="form-grid">
+            <label for="processo">Processo</label>
+            <input type="text" id="processo">
+            <button class="btn" onclick="copiar('processo')">Copiar</button>
+
+            <label for="emissao">Data de Emissão</label>
+            <input type="text" id="emissao" placeholder="Ex: 17/06/2025">
+            <button class="btn" onclick="copiar('emissao')">Copiar</button>
+            
+            <label for="relpg">REL. PG</label>
+            <input type="text" id="relpg">
+            <button class="btn" onclick="copiar('relpg')">Copiar</button>
+
+            <label for="ref">REF.</label>
+            <input type="text" id="ref">
+            <button class="btn" onclick="copiar('ref')">Copiar</button>
+
+            <label for="descbolsa">DESC BOLSA</label>
+            <input type="text" id="descbolsa">
+            <button class="btn" onclick="copiar('descbolsa')">Copiar</button>
+
+            <label for="valor">Valor</label>
+            <input type="text" id="valor">
+            <button class="btn" onclick="copiar('valor')">Copiar</button>
+
+            <label for="fonte">FONTE</label>
+            <input type="text" id="fonte" placeholder="Ex: 1000000000">
+            <button class="btn" onclick="copiar('fonte')">Copiar</button>
+            
+            <label for="ateste">Ateste</label>
+            <input type="text" id="ateste"><button class="btn" onclick="copiar('ateste')">Copiar</button>
+            <label for="cnpj">CNPJ CREDOR</label>
+            <input type="text" id="cnpj"><button class="btn" onclick="copiar('cnpj')">Copiar</button>
+            <label for="empenho">EMPENHO</label>
+            <input type="text" id="empenho"><button class="btn" onclick="copiar('empenho')">Copiar</button>
+            <label for="subelemento">Subelemento</label>
+            <input type="text" id="subelemento"><button class="btn" onclick="copiar('subelemento')">Copiar</button>
+            <label for="titulo">TÍTULO DE CRÉDITO</label>
+            <input type="text" id="titulo"><button class="btn" onclick="copiar('titulo')">Copiar</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>3. Gere um Novo Despacho</h2>
+        <div class="generator-grid">
+            <button class="btn btn-gen" onclick="gerarDespacho('LIQUIDAÇÃO')">Liquidação</button>
+            <button class="btn btn-gen" onclick="gerarDespacho('PAGAMENTO')">Pagamento</button>
+            <button class="btn btn-gen" onclick="gerarDespacho('TRIB. FED.')">TRIB. FED.</button>
+            <button class="btn btn-gen" onclick="gerarDespacho('ISS')">ISS</button>
+            <button class="btn btn-gen" onclick="gerarDespacho('INSS')">INSS</button>
+            <button class="btn btn-gen" onclick="gerarDespacho('CONTA VINCULADA')">Conta Vinculada</button>
+        </div>
+        <hr>
+        <div id="output-container">
+            <h3>Despacho Gerado:</h3>
+            <textarea id="despachoGerado" placeholder="O texto do novo despacho aparecerá aqui..."></textarea>
+            <button class="btn" onclick="copiar('despachoGerado')">Copiar Despacho Gerado</button>
+        </div>
+    </div>
+
+<script>
+    function processarTexto() {
+        const texto = document.getElementById('inputText').value;
+
+        const campos = ['processo', 'ateste', 'cnpj', 'emissao', 'relpg', 'ref', 'descbolsa', 'valor', 'fonte', 'empenho', 'subelemento', 'titulo'];
+        campos.forEach(id => document.getElementById(id).value = '');
+
+        // --- INÍCIO DA ALTERAÇÃO ---
+        // Expressões Regulares ATUALIZADAS para serem mais flexíveis com variações de texto e capitalização.
+        const regex = {
+            // Adicionado /i para ignorar maiúsculas/minúsculas
+            processo:   /Número do Processo:\s*([\d\.\/\-]+)/i,
+            
+            // Usamos .* para aceitar qualquer texto entre "Emissão" e "Bolsistas"
+            emissao:    /Data de Emissão.*Bolsistas:\s*(\d{2}\/\d{2}\/\d{4})/i,
+            
+            // Captura todo o conteúdo após "REL. PG...:"
+            relpg:      /REL\. PG.*:\s*(.*)/i,
+            
+            // Aceita variações no rótulo de REF e ignora maiúsculas/minúsculas
+            ref:        /REF\..*Mês de Referência.*:\s*([a-zA-ZÇç]+\/\d{4})/i,
+
+            // Ignora maiúsculas/minúsculas
+            descbolsa:  /Descrição da Bolsa:\s*(.*)/i,
+
+            // Ignora maiúsculas/minúsculas
+            valor:      /Valor Total:\s*R\$\s*([\d\.\,]+)/i,
+
+            // Ignora maiúsculas/minúsculas
+            ateste:     /\*?\s*Data de Ateste:\s*(\d{2}\/\d{2}\/\d{4})/i
+        };
+        // --- FIM DA ALTERAÇÃO ---
+
+        for (const chave in regex) {
+            const match = texto.match(regex[chave]);
+            if (match) {
+                let valorFinal = match[1].trim();
+                document.getElementById(chave).value = valorFinal;
+            }
+        }
+    }
+
+    function copiar(elementId) {
+        const input = document.getElementById(elementId);
+        let textoParaCopiar = input.value; 
+
+        if (!textoParaCopiar) {
+            return; 
+        }
+
+        if (elementId === 'relpg') {
+            textoParaCopiar = 'REL. PG ' + textoParaCopiar;
+        }
+        
+        navigator.clipboard.writeText(textoParaCopiar).catch(err => {
+            console.error('Erro ao copiar texto: ', err);
+        });
+    }
+
+    function gerarDespacho(tipo) {
+        const dados = {
+            processo: document.getElementById('processo').value || '[PROCESSO PENDENTE]',
+            emissao: document.getElementById('emissao').value || '[DATA PENDENTE]',
+            relpg: document.getElementById('relpg').value || '[REL. PG PENDENTE]',
+            ref: document.getElementById('ref').value || '[REF. PENDENTE]',
+            descRef: document.getElementById('descbolsa').value || '[DESC PENDENTE]',
+            valor: document.getElementById('valor').value || '[VALOR PENDENTE]',
+            fonte: document.getElementById('fonte').value || '[FONTE PENDENTE]'
+        };
+
+        const despachoGerado = `${tipo} DA REL. PG ${dados.relpg} DE ${dados.emissao} - VALOR R$ ${dados.valor} - REF. ${dados.ref} - REF. ${dados.descRef} - PROCESSO: ${dados.processo} - FONTE: ${dados.fonte}`;
+        
+        document.getElementById('despachoGerado').value = despachoGerado;
+    }
+</script>
+</body>
+</html>

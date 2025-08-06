@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator de Dados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top to prevent jumping on content load */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px; /* Increased max-width for better display of multiple columns */
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 1rem;
+            line-height: 1.5;
+            transition: border-color 0.3s ease;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        button {
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: #ffffff;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .output-box {
+            background-color: #f9fafb;
+            border: 2px dashed #d1d5db;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: #374151;
+            word-break: break-all; /* Ensures long strings wrap */
+            white-space: pre-wrap; /* Preserves whitespace and wraps */
+            overflow-x: auto; /* Allow horizontal scrolling for wide output */
+        }
+        .message-box {
+            background-color: #eff6ff;
+            color: #1e40af;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+            text-align: center;
+            font-weight: 500;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-4">Extrator de Dados SIAFI</h1>
+
+        <div class="message-box" id="messageBox"></div>
+
+        <label for="inputText" class="text-lg font-medium text-gray-700">Cole o texto aqui:</label>
+        <textarea id="inputText" class="w-full" placeholder="Cole o texto do SIAFI aqui..."></textarea>
+
+        <div class="flex flex-col sm:flex-row gap-4">
+            <button id="extractButton" class="btn-primary flex-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                </svg>
+                Extrair Dados
+            </button>
+            <button id="copyButton" class="btn-secondary flex-1" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                </svg>
+                Copiar para Área de Transferência
+            </button>
+        </div>
+
+        <label for="outputData" class="text-lg font-medium text-gray-700">Dados Extraídos (pronto para colar na planilha - use ponto e vírgula como separador):</label>
+        <div id="outputData" class="output-box">
+            Nenhum dado extraído ainda.
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputText = document.getElementById('inputText');
+            const extractButton = document.getElementById('extractButton');
+            const copyButton = document.getElementById('copyButton');
+            const outputData = document.getElementById('outputData');
+            const messageBox = document.getElementById('messageBox');
+
+            // Sample text for demonstration
+            inputText.value = '';
+
+            /**
+             * Exibe uma mensagem na caixa de mensagem.
+             * @param {string} message - A mensagem a ser exibida.
+             * @param {string} type - O tipo da mensagem ('success', 'error', 'info').
+             */
+            function showMessage(message, type = 'info') {
+                messageBox.textContent = message;
+                messageBox.style.display = 'block';
+                messageBox.className = 'message-box'; // Reset classes
+                if (type === 'success') {
+                    messageBox.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+                } else if (type === 'error') {
+                    messageBox.classList.add('bg-red-100', 'text-red-800', 'border-red-300');
+                } else { // info
+                    messageBox.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
+                }
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 3000); // Esconde a mensagem após 3 segundos
+            }
+
+            /**
+             * Converte uma string de data abreviada (ex: '01Jul25') para 'DD/MM/AA'.
+             * @param {string} dateStr - A string de data abreviada.
+             * @returns {string} A data formatada ou a string original se não puder ser convertida.
+             */
+            function formatDate(dateStr) {
+                const monthMap = {
+                    'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                    'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                };
+                // Expected format: DDMMMYY (e.g., 01Jul25)
+                const day = dateStr.substring(0, 2);
+                const monthAbbr = dateStr.substring(2, 5);
+                const year = dateStr.substring(5, 7);
+
+                if (monthMap[monthAbbr]) {
+                    return `${day}/${monthMap[monthAbbr]}/${year}`;
+                }
+                return dateStr; // Retorna a string original se o formato não for reconhecido
+            }
+
+            /**
+             * Extrai dados de um único bloco de texto SIAFI.
+             * Agora, este bloco de texto é o INPUT COMPLETO do usuário,
+             * e não mais um sub-bloco dividido pelo separador SIAFI.
+             * @param {string} fullText - O texto completo de entrada para extração.
+             * @returns {object} Um objeto contendo os dados extraídos para uma linha.
+             */
+            function extractDataFromFullText(fullText) {
+                const data = {
+                    tipoPagamento: '',
+                    descricao: '',
+                    processo: '',
+                    empenho: '',
+                    documentoHabil: '',
+                    valor: '',
+                    fonte: '',
+                    dataLiquidacao: ''
+                };
+
+                console.log("Full Text recebido para extração:", fullText);
+
+                // Regex para Descrição (OBSERVACAO até PROCESSO: ou FONTE: ou CONTINUA...)
+                const regexDescricao = /OBSERVACAO\s*([\s\S]*?)(?=\s*PROCESSO:|\s*FONTE:|\s*CONTINUA\.\.\.)/;
+                const matchDescricao = fullText.match(regexDescricao);
+                console.log("matchDescricao:", matchDescricao);
+                if (matchDescricao && matchDescricao[1]) {
+                    let rawDesc = matchDescricao[1].replace(/\s+/g, ' ').trim();
+                    rawDesc = rawDesc.replace(/ - VALOR R\$ [\d\.,]+/, '');
+                    rawDesc = rawDesc.replace(/ - PROCESSO:.*$/, '').replace(/ - FONTE:.*$/, '').trim();
+                    data.descricao = rawDesc;
+
+                    const lowerDesc = rawDesc.toLowerCase();
+                    if (lowerDesc.includes('bolsas') || lowerDesc.includes('monitoria')) {
+                        data.tipoPagamento = 'Bolsas';
+                    } else if (lowerDesc.includes('serviços') || lowerDesc.includes('contrato') || lowerDesc.includes('consultoria')) {
+                        data.tipoPagamento = 'Serviços';
+                    } else if (lowerDesc.includes('energia elétrica') || lowerDesc.includes('equatorial')) {
+                        data.tipoPagamento = 'Energia Elétrica';
+                    } else {
+                        data.tipoPagamento = 'Outros';
+                    }
+                }
+
+                // Regex para Processo (captura o número após "PROCESSO:" que começa com 23852, permitindo quebras de linha/espaços)
+                // Ajustado para capturar 23852.00\n3813/2025-92
+                const regexProcesso = /PROCESSO:[\s\S]*?(23852\.\d{2}[\s\S]*?\d{4}\/\d{4}-\d{2})/;
+                const matchProcesso = fullText.match(regexProcesso);
+                console.log("matchProcesso:", matchProcesso);
+                if (matchProcesso && matchProcesso[1]) {
+                    // Remove quebras de linha e múltiplos espaços do número do processo capturado
+                    data.processo = matchProcesso[1].replace(/\s+/g, '').trim();
+                }
+
+                // Regex para Empenho (procura por qualquer padrão 2025NE###### no texto completo)
+                const regexEmpenho = /(\d{4}NE\d{6})/;
+                const matchEmpenho = fullText.match(regexEmpenho);
+                console.log("matchEmpenho:", matchEmpenho);
+                if (matchEmpenho && matchEmpenho[1]) {
+                    data.empenho = matchEmpenho[1].trim();
+                }
+
+                // Regex para Documento Hábil (TITULO DE CREDITO: 2025RP###### ou 2025NP######)
+                const regexDocumentoHabil = /TITULO DE CREDITO :\s*(\d{4}(?:RP|NP)\d{6})\sDATA VENCIMENTO/;
+                const matchDocumentoHabil = fullText.match(regexDocumentoHabil);
+                console.log("matchDocumentoHabil:", matchDocumentoHabil);
+                if (matchDocumentoHabil && matchDocumentoHabil[1]) {
+                    data.documentoHabil = matchDocumentoHabil[1].trim();
+                }
+
+                // Regex para Valor (procura por "VALOR R$" seguido do valor)
+                const regexValor = /VALOR R\$\s*([\d\.,]+)/;
+                const matchValor = fullText.match(regexValor);
+                console.log("matchValor:", matchValor);
+                if (matchValor && matchValor[1]) {
+                    data.valor = `R$ ${matchValor[1].trim()}`;
+                }
+
+                // Regex para Fonte (procura por "FONTE:" seguido do número)
+                const regexFonte = /FONTE:\s*(\d+)/;
+                const matchFonte = fullText.match(regexFonte);
+                console.log("matchFonte:", matchFonte);
+                if (matchFonte && matchFonte[1]) {
+                    data.fonte = matchFonte[1].trim();
+                }
+
+                // Regex para Data da Liquidação (assumindo a primeira data encontrada no formato DDMMMYY)
+                const regexDataEmissao = /\b(\d{2}[A-Za-z]{3}\d{2})\b/; // Captura DDMMMYY
+                const matchDataEmissao = fullText.match(regexDataEmissao);
+                console.log("matchDataEmissao:", matchDataEmissao);
+                if (matchDataEmissao && matchDataEmissao[1]) {
+                    data.dataLiquidacao = formatDate(matchDataEmissao[1].trim());
+                }
+
+                console.log("Objeto de dados extraídos (final):", data);
+                return data;
+            }
+
+            // Event listener para o botão de extrair
+            extractButton.addEventListener('click', () => {
+                const text = inputText.value;
+                if (!text.trim()) {
+                    showMessage('Por favor, cole o texto antes de extrair.', 'error');
+                    outputData.textContent = '';
+                    copyButton.style.display = 'none';
+                    return;
+                }
+
+                // Processamos o texto inteiro como um único documento
+                const extractedData = extractDataFromFullText(text);
+
+                // Formata a saída como uma única linha separada por ponto e vírgula, sem cabeçalho
+                // A ordem aqui é crucial para a colagem na planilha
+                const formattedOutput = [
+                    extractedData.tipoPagamento,
+                    extractedData.descricao,
+                    extractedData.processo,
+                    extractedData.empenho,
+                    extractedData.documentoHabil,
+                    extractedData.valor,
+                    extractedData.fonte,
+                    extractedData.dataLiquidacao
+                ].join(';'); // Alterado para ponto e vírgula
+
+                console.log("String de saída formatada para cópia (com ponto e vírgula):", formattedOutput);
+                outputData.textContent = formattedOutput;
+                copyButton.style.display = 'block';
+                showMessage('Dados extraídos com sucesso!', 'success');
+            });
+
+            // Event listener para o botão de copiar
+            copyButton.addEventListener('click', () => {
+                const textToCopy = outputData.textContent;
+                if (textToCopy === '' || !textToCopy.trim()) {
+                    showMessage('Não há dados para copiar.', 'error');
+                    return;
+                }
+
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showMessage('Copiado para a área de transferência!', 'success');
+                } catch (err) {
+                    showMessage('Erro ao copiar: ' + err, 'error');
+                }
+                document.body.removeChild(textArea);
+            });
+        });
+    </script>
+</body>
+</html>

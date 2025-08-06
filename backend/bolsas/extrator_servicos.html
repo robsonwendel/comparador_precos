@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente de Despachos - Serviços</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: flex-start; padding: 20px; gap: 30px; flex-wrap: wrap; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); width: 480px; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        textarea { width: 95%; height: 180px; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .form-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; align-items: center; }
+        .form-grid label { font-weight: bold; text-align: right; padding-right: 10px; color: #555; font-size: 14px; }
+        .form-grid input, .form-grid select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; background-color: #555; color: white; width: 100%; font-size: 13px; }
+        .btn:hover { background-color: #333; }
+        .btn-process { background-color: #28a745; color: white; font-size: 16px; padding: 12px; width: 100%; }
+        .btn-process:hover { background-color: #218838; }
+        .generator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .generator-grid .btn-gen { padding: 15px 10px; font-size: 14px; text-align: center; }
+        #output-container { margin-top: 20px; }
+        #output-container h3 { text-align: center; color: #333; }
+        #despachoGerado { height: 100px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>1. Cole os Dados do Serviço</h2>
+        <textarea id="inputText" placeholder="Cole o bloco de informações do serviço aqui..."></textarea>
+        <button onclick="processarTextoServicos()" class="btn-process">Extrair Dados para Formulário</button>
+    </div>
+
+    <div class="container">
+        <h2>2. Edite e Copie os Dados</h2>
+        <div class="form-grid">
+            <label for="processo">Processo</label>
+            <input type="text" id="processo"> <button class="btn" onclick="copiar('processo')">Copiar</button>
+            <label for="ateste">Ateste</label>
+            <input type="text" id="ateste"> <button class="btn" onclick="copiar('ateste')">Copiar</button>
+            <label for="valor">Valor</label>
+            <input type="text" id="valor"> <button class="btn" onclick="copiar('valor')">Copiar</button>
+            <label for="cnpj">CNPJ CREDOR</label>
+            <input type="text" id="cnpj"> <button class="btn" onclick="copiar('cnpj')">Copiar</button>
+            <label for="data_emissao">Data de Emissão</label>
+            <input type="text" id="data_emissao"> <button class="btn" onclick="copiar('data_emissao')">Copiar</button>
+            <label for="nf">NF</label>
+            <input type="text" id="nf"> <button class="btn" onclick="copiar('nf')">Copiar</button>
+            <label for="ref">REF.</label>
+            <input type="text" id="ref"> <button class="btn" onclick="copiar('ref')">Copiar</button>
+            <label for="ref_servico">REF. SERVIÇO</label>
+            <input type="text" id="ref_servico" placeholder="Preencher manualmente..."> <button class="btn" onclick="copiar('ref_servico')">Copiar</button>
+            <label for="fonte">FONTE</label>
+            <input type="text" id="fonte" placeholder="Preencher manualmente..."> <button class="btn" onclick="copiar('fonte')">Copiar</button>
+            <label for="contrato">CONTRATO</label>
+            <input type="text" id="contrato"> <button class="btn" onclick="copiar('contrato')">Copiar</button>
+            <label for="conta_vinculada">Conta Vinculada</label>
+            <input type="text" id="conta_vinculada"> <button class="btn" onclick="copiar('conta_vinculada')">Copiar</button>
+            <label for="empenho">EMPENHO</label>
+            <input type="text" id="empenho"> <button class="btn" onclick="copiar('empenho')">Copiar</button>
+            
+            <label for="simples_nacional">Optante do Simples Nacional?</label>
+            <select id="simples_nacional">
+                <option value="Não">Não</option>
+                <option value="Sim">Sim</option>
+            </select>
+            <div></div> </div>
+    </div>
+
+    <div class="container">
+        <h2>3. Gere um Novo Despacho</h2>
+        <div class="generator-grid">
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('LIQUIDAÇÃO')">Liquidação</button>
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('PAGAMENTO')">Pagamento</button>
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('TRIB. FED.')">TRIB. FED.</button>
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('ISS')">ISS</button>
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('INSS')">INSS</button>
+            <button class="btn btn-gen" onclick="gerarDespachoServicos('CONTA VINCULADA')">Conta Vinculada</button>
+        </div>
+        <hr>
+        <div id="output-container">
+            <h3>Despacho Gerado:</h3>
+            <textarea id="despachoGerado" placeholder="O texto do novo despacho aparecerá aqui..."></textarea>
+            <button class="btn" onclick="copiar('despachoGerado')">Copiar Despacho Gerado</button>
+        </div>
+    </div>
+
+<script>
+    function processarTextoServicos() {
+        const texto = document.getElementById('inputText').value;
+
+        document.querySelectorAll('.form-grid input').forEach(input => input.value = '');
+
+        const regex = {
+            cnpj: /(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/,
+            processo: /Proc\.\(s\) núm\.\(s\):\s*([\d\.\/\-]+)/,
+            nf: /Instr\.\(s\) de Cobrança\(s\) núm\.\(s\):\s*([\d\.]+)/,
+            contrato: /Contrato nº:\s*([\d\/]+)/,
+            ref: /mês\(es\):\s*([\d\/]+)/,
+            valor: /R\$\s*([\d\.,]+)/,
+            empenho: /(\d{4}NE\d+)/,
+            data_emissao: /(\d{2}\/\d{2}\/\d{4})/ 
+        };
+
+        for (const chave in regex) {
+            const match = texto.match(regex[chave]);
+            if (match) {
+                document.getElementById(chave).value = match[1].trim();
+            }
+        }
+    }
+
+    function copiar(elementId) {
+        const input = document.getElementById(elementId);
+        let textoParaCopiar = input.value; 
+
+        if (!textoParaCopiar) {
+            return; 
+        }
+        
+        navigator.clipboard.writeText(textoParaCopiar).catch(err => {
+            console.error('Erro ao copiar texto: ', err);
+        });
+    }
+
+    // --- FUNÇÃO 'gerarDespachoServicos' MODIFICADA ---
+    function gerarDespachoServicos(tipo) {
+        const dados = {
+            processo: document.getElementById('processo').value || '[PROCESSO PENDENTE]',
+            nf: document.getElementById('nf').value || '[NF PENDENTE]',
+            data_emissao: document.getElementById('data_emissao').value || '[DATA PENDENTE]',
+            valor: document.getElementById('valor').value || '[VALOR PENDENTE]',
+            ref: document.getElementById('ref').value || '[REF. PENDENTE]',
+            ref_servico: document.getElementById('ref_servico').value || '[REF. SERVIÇO PENDENTE]',
+            contrato: document.getElementById('contrato').value || '[CONTRATO PENDENTE]',
+            fonte: document.getElementById('fonte').value || '[FONTE PENDENTE]'
+        };
+        
+        // Pega o valor do novo campo (Sim ou Não)
+        const isSimples = document.getElementById('simples_nacional').value;
+
+        // Monta o despacho base
+        let despachoGerado = `${tipo} DA NF ${dados.nf} DE ${dados.data_emissao} - VALOR R$ ${dados.valor} - REF. ${dados.ref} - REF. SERVIÇO ${dados.ref_servico} - CONTRATO ${dados.contrato} - PROCESSO: ${dados.processo} - FONTE: ${dados.fonte}`;
+        
+        // Adiciona o texto do Simples Nacional, se aplicável
+        if (isSimples === 'Sim') {
+            despachoGerado += ' - Optante do Simples Nacional';
+        }
+
+        document.getElementById('despachoGerado').value = despachoGerado;
+    }
+</script>
+
+</body>
+</html>
